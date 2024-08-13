@@ -1,0 +1,253 @@
+<html><head><base href="https://psych-sim.com/rogers/voice-tc/"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>與卡爾·羅傑斯對話 - 語音心理諮詢模擬</title>
+<style>
+body {
+    font-family: 'Microsoft JhengHei', '微軟正黑體', sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f0f8ff;
+    color: #333;
+}
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    font-size: 24px;
+}
+.conversation {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    max-height: 50vh;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+.message {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 5px;
+}
+.user {
+    background-color: #e1f5fe;
+    text-align: right;
+}
+.rogers {
+    background-color: #e8f5e9;
+}
+.speaker {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+#startBtn, #endBtn {
+    padding: 10px 20px;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 16px;
+    margin: 10px;
+    width: 120px;
+}
+#startBtn {
+    background-color: #4caf50;
+}
+#startBtn:hover {
+    background-color: #45a049;
+}
+#endBtn {
+    background-color: #f44336;
+}
+#endBtn:hover {
+    background-color: #d32f2f;
+}
+.controls {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+#status {
+    text-align: center;
+    font-style: italic;
+    margin-bottom: 10px;
+}
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+    h1 {
+        font-size: 20px;
+    }
+    .conversation {
+        max-height: 60vh;
+    }
+    #startBtn, #endBtn {
+        width: 100px;
+        font-size: 14px;
+    }
+}
+</style>
+</head>
+<body>
+<h1>與卡爾·羅傑斯的語音心理諮詢模擬</h1>
+<div id="status">準備就緒</div>
+<div class="controls">
+    <button id="startBtn">開始對話</button>
+    <button id="endBtn" disabled>結束對話</button>
+</div>
+<div class="conversation" id="conversationContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+const conversationContainer = document.getElementById('conversationContainer');
+const startBtn = document.getElementById('startBtn');
+const endBtn = document.getElementById('endBtn');
+const statusDisplay = document.getElementById('status');
+
+let isConversationActive = false;
+let recognition;
+let speechSynthesis = window.speechSynthesis;
+
+function addMessage(speaker, text, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user' : 'rogers'}`;
+    
+    const speakerDiv = document.createElement('div');
+    speakerDiv.className = 'speaker';
+    speakerDiv.textContent = speaker + '：';
+    
+    const textDiv = document.createElement('div');
+    textDiv.textContent = text;
+    
+    messageDiv.appendChild(speakerDiv);
+    messageDiv.appendChild(textDiv);
+    
+    conversationContainer.appendChild(messageDiv);
+    conversationContainer.scrollTop = conversationContainer.scrollHeight;
+}
+
+async function generateRogersResponse(userMessage) {
+    const responses = [
+        "我能感受到你的情緒中有一些[emotion]。能和我多分享一些這方面的感受嗎？",
+        "聽起來這個情況對你來說很[impact]。你能告訴我，它是如何影響你日常生活的嗎？",
+        "我在想，如果此刻你能完全接納自己當前的狀態，會是什麼感覺？",
+        "你對自己的感受表現出很強的自我意識。反思這些情緒對你來說是什麼體驗？",
+        "我很好奇，你有沒有想過這種感受與你的核心價值觀或信念有什麼聯繫？",
+        "看起來你正在經歷一些內心的矛盾或掙扎。你覺得你可能如何開始解決這個問題？",
+        "我感覺這對你來說是一個重要的議題。它與你的自我認知有什麼樣的關係？",
+        "你似乎正面臨一個具有挑戰性的情況。在這個時刻，你覺得你最需要什麼樣的支持？",
+        "你表達自己的方式讓我印象深刻。你能更詳細地描述這對你個人意味著什麼嗎？",
+        "聽起來你正在經歷一個自我探索的過程。這與你的個人成長目標是如何契合的？"
+    ];
+    
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    const emotionWords = ['喜悅', '悲傷', '憤怒', '困惑', '興奮', '焦慮', '沮喪', '滿足', '擔憂', '希望'];
+    const impactWords = ['具有挑戰性', '鼓舞人心', '困難', '重要', '改變巨大', '壓力很大', '有意義', '令人困惑', '賦予力量', '令人不知所措'];
+    
+    const emotion = emotionWords[Math.floor(Math.random() * emotionWords.length)];
+    const impact = impactWords[Math.floor(Math.random() * impactWords.length)];
+    
+    return randomResponse.replace('[emotion]', emotion).replace('[impact]', impact);
+}
+
+function speakText(text) {
+    return new Promise((resolve) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-TW';
+        utterance.onend = resolve;
+        speechSynthesis.speak(utterance);
+    });
+}
+
+async function startConversation() {
+    isConversationActive = true;
+    conversationContainer.innerHTML = '';
+    startBtn.disabled = true;
+    endBtn.disabled = false;
+    statusDisplay.textContent = '對話進行中...';
+
+    const welcomeMessage = '你好，我是卡爾·羅傑斯。今天你感覺如何？請記住，這裡是一個你可以自由表達自己，不受任何評判的安全空間。';
+    addMessage('卡爾·羅傑斯', welcomeMessage);
+    await speakText(welcomeMessage);
+
+    startSpeechRecognition();
+}
+
+function endConversation() {
+    isConversationActive = false;
+    if (recognition) {
+        recognition.stop();
+    }
+    const endMessage = '謝謝你今天與我分享你的想法和感受。記住，自我成長是一個持續的過程，希望我們的對話能為你提供一些有價值的思考。如果你還有任何問題或需要進一步的支持，隨時都可以回來。祝你一切安好。';
+    addMessage('卡爾·羅傑斯', endMessage);
+    speakText(endMessage);
+    startBtn.disabled = false;
+    endBtn.disabled = true;
+    statusDisplay.textContent = '對話已結束';
+}
+
+function startSpeechRecognition() {
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'zh-TW';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = async function(event) {
+        const userMessage = event.results[0][0].transcript;
+        addMessage('你', userMessage, true);
+        
+        recognition.stop(); // 關閉麥克風
+        
+        const rogersResponse = await generateRogersResponse(userMessage);
+        addMessage('卡爾·羅傑斯', rogersResponse);
+        await speakText(rogersResponse);
+        
+        if (isConversationActive) {
+            recognition.start(); // 重新開啟麥克風
+        }
+    };
+
+    recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        statusDisplay.textContent = '語音識別錯誤，請重試';
+    };
+
+    recognition.onend = function() {
+        if (isConversationActive && !speechSynthesis.speaking) {
+            recognition.start();
+        }
+    };
+
+    recognition.start();
+}
+
+startBtn.addEventListener('click', startConversation);
+endBtn.addEventListener('click', endConversation);
+
+// 檢查瀏覽器支援
+if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('您的瀏覽器不支援語音識別功能，請使用最新版本的Chrome瀏覽器。');
+    startBtn.disabled = true;
+    statusDisplay.textContent = '瀏覽器不支援語音識別';
+}
+
+// 處理行動裝置的音訊權限
+function handleMobileAudioPermission() {
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        startBtn.addEventListener('click', function() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    startConversation();
+                })
+                .catch(function(err) {
+                    console.error('無法獲取音訊權限:', err);
+                    alert('請允許使用麥克風以開始對話。');
+                });
+        });
+    }
+}
+
+handleMobileAudioPermission();
+</script>
+</body></html>
